@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galaxy Plinko</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#03000a;
+    --panel:rgba(15, 15, 35, 0.6);
+    --panel2:rgba(30, 30, 65, 0.5);
+    --border:rgba(100, 100, 255, 0.25);
+    --text:#e2e8f0;
+    --muted:#8b93a7;
+    --cyan:#00f5d4;
+    --purple:#b429ff;
+    --pink:#f72585;
+    --green:#00e701;
+    --red:#ff4d4d;
+    --orange:#ffaa00;
+    --radius:14px;
+  }
+  body{
+    font-family:'Inter',system-ui,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    overflow-x:hidden;
+    position:relative;
+  }
+  
+  /* Fixed Background Canvas for Asteroids & Rockets */
+  #bgCanvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    z-index: -2;
+    pointer-events: none;
+  }
+
+  /* Galaxy Starfield Background */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: 
+      radial-gradient(1px 1px at 20px 30px, #fff, rgba(0,0,0,0)),
+      radial-gradient(1.5px 1.5px at 40px 70px, #fff, rgba(0,0,0,0)),
+      radial-gradient(1px 1px at 50px 160px, #fff, rgba(0,0,0,0)),
+      radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
+      radial-gradient(1px 1px at 130px 80px, #fff, rgba(0,0,0,0)),
+      radial-gradient(2px 2px at 160px 120px, #fff, rgba(0,0,0,0)),
+      radial-gradient(1px 1px at 200px 190px, #fff, rgba(0,0,0,0)),
+      radial-gradient(1.5px 1.5px at 250px 50px, #fff, rgba(0,0,0,0));
+    background-repeat: repeat;
+    background-size: 300px 300px;
+    z-index: -1;
+    opacity: 0.3;
+    animation: twinkle 5s infinite alternate;
+  }
+  @keyframes twinkle {
+    0% { opacity: 0.2; }
+    100% { opacity: 0.5; }
+  }
+  
+  /* Nebula Glow Overlay */
+  body::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: 
+      radial-gradient(circle at 10% 20%, rgba(180, 41, 255, 0.08) 0%, transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(0, 245, 212, 0.06) 0%, transparent 40%),
+      radial-gradient(circle at 50% 50%, rgba(247, 37, 133, 0.04) 0%, transparent 50%);
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .hidden{display:none!important}
+
+  .modal-overlay{
+    position:fixed;inset:0;z-index:1000;
+    background:rgba(3, 0, 10, 0.85);
+    backdrop-filter:blur(12px);
+    display:flex;align-items:center;justify-content:center;
+    padding:20px;
+  }
+  .modal{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:32px 28px;
+    max-width:440px;width:100%;
+    box-shadow:0 0 40px rgba(100, 100, 255, 0.1), inset 0 0 20px rgba(100, 100, 255, 0.05);
+    text-align:center;
+    backdrop-filter: blur(16px);
+  }
+  .modal h1{font-family:'Orbitron',sans-serif;font-size:24px;margin-bottom:12px;color:var(--cyan);letter-spacing:1px}
+  .modal p{color:var(--muted);line-height:1.6;margin-bottom:22px;font-size:14px}
+  .modal .btn{width:100%;margin-bottom:10px}
+  
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    gap:8px;padding:13px 20px;border:none;border-radius:12px;
+    font-weight:700;font-size:14px;cursor:pointer;
+    transition:transform .1s,filter .15s, box-shadow .15s;
+    font-family:'Inter',sans-serif;
+  }
+  .btn:active{transform:scale(.97)}
+  .btn-primary{
+    background:linear-gradient(135deg, var(--purple), var(--pink));
+    color:#fff;
+    box-shadow:0 0 15px rgba(180, 41, 255, 0.4);
+  }
+  .btn-primary:hover{filter:brightness(1.1);box-shadow:0 0 25px rgba(180, 41, 255, 0.6)}
+  .btn-ghost{background:var(--panel2);color:var(--text);border:1px solid var(--border);backdrop-filter:blur(8px)}
+  .btn-ghost:hover{background:rgba(100, 100, 255, 0.15)}
+  .btn-danger{background:rgba(255,77,77,.15);color:var(--red);border:1px solid rgba(255,77,77,.3)}
+  .btn-danger:hover{background:rgba(255,77,77,.25)}
+  .btn-discord{background:#5865F2;color:#fff;text-decoration:none;box-shadow:0 0 15px rgba(88, 101, 242, 0.4);}
+  .btn-discord:hover{background:#4752c4;box-shadow:0 0 25px rgba(88, 101, 242, 0.6);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+
+  #app{max-width:1060px;margin:0 auto;padding:0 16px 40px; position:relative; z-index:10;}
+  
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 0;gap:16px;flex-wrap:wrap;
+  }
+  
+  /* Logo Styling */
+  .logo {
+    display: flex;
+    align-items: center;
+  }
+  .logo-img {
+    height: 90px; 
+    width: auto;
+    object-fit: contain;
+    mix-blend-mode: screen; 
+    filter: drop-shadow(0 0 20px rgba(0, 245, 212, 0.5)); 
+    transition: transform 0.2s;
+  }
+  .logo-img:hover {
+    transform: scale(1.05);
+  }
+  .text-logo {
+    font-family:'Orbitron',sans-serif; 
+    font-weight:900; 
+    font-size:28px; 
+    letter-spacing:2px; 
+    color:#fff; 
+    text-shadow:0 0 15px rgba(0,245,212,0.6);
+  }
+
+  .balance-box{
+    display:flex;align-items:center;gap:14px;
+    background:var(--panel);border:1px solid var(--border);
+    border-radius:14px;padding:10px 16px;
+    backdrop-filter: blur(12px);
+    box-shadow:0 0 15px rgba(0, 0, 0, 0.3);
+  }
+  .balance-box .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;}
+  .balance-box .usd{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--cyan);text-shadow:0 0 10px rgba(0, 245, 212, 0.3);}
+  .balance-box .btc{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .header-actions{display:flex;gap:10px;align-items:center}
+
+  main{display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start}
+  @media(max-width:820px){main{grid-template-columns:1fr}}
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:20px;
+    backdrop-filter: blur(12px);
+    box-shadow:0 0 20px rgba(0, 0, 0, 0.4);
+  }
+  .panel + .panel{margin-top:16px}
+  .panel-title{
+    font-family:'Orbitron',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;
+    color:var(--cyan);margin-bottom:12px;font-weight:700;
+  }
+
+  .bet-input-wrap{
+    display:flex;align-items:center;
+    background:var(--panel2);border:1px solid var(--border);
+    border-radius:12px;padding:4px 4px 4px 14px;margin-bottom:12px;
+    transition:border-color .2s;
+  }
+  .bet-input-wrap:focus-within{border-color:var(--purple);box-shadow:0 0 10px rgba(180, 41, 255, 0.2);}
+  .bet-input-wrap .dollar{color:var(--muted);font-size:18px;font-weight:700}
+  .bet-input-wrap input{
+    flex:1;background:transparent;border:none;outline:none;
+    color:var(--text);font-size:22px;font-weight:800;
+    padding:10px 8px;font-family:inherit;width:100%;
+    font-variant-numeric:tabular-nums;
+  }
+  .bet-input-wrap input::-webkit-outer-spin-button,
+  .bet-input-wrap input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .bet-input-wrap.plain{padding:4px 4px 4px 14px}
+  .bet-input-wrap.plain input{padding:10px 8px 10px 0;font-size:20px}
+
+  .quick-bets{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px}
+  .quick-bets button{
+    background:var(--panel2);border:1px solid var(--border);
+    color:var(--muted);border-radius:8px;padding:7px 4px;
+    font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;
+    transition:.15s;
+  }
+  .quick-bets button:hover{background:rgba(100, 100, 255, 0.15);color:var(--text);border-color:var(--purple)}
+
+  .risk-group{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px}
+  .risk-btn{
+    background:var(--panel2);border:1px solid var(--border);
+    color:var(--muted);border-radius:10px;padding:10px 4px;
+    font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;
+    transition:.15s;
+  }
+  .risk-btn:hover{background:rgba(100, 100, 255, 0.15)}
+  .risk-btn.active[data-risk="low"]{background:rgba(0, 245, 212, 0.15);border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 10px rgba(0, 245, 212, 0.2);}
+  .risk-btn.active[data-risk="medium"]{background:rgba(255, 170, 0, 0.15);border-color:var(--orange);color:var(--orange);box-shadow:0 0 10px rgba(255, 170, 0, 0.2);}
+  .risk-btn.active[data-risk="high"]{background:rgba(247, 37, 133, 0.15);border-color:var(--pink);color:var(--pink);box-shadow:0 0 10px rgba(247, 37, 133, 0.2);}
+  .risk-note{font-size:11px;color:var(--muted);text-align:center;margin-bottom:16px}
+
+  .total-note{
+    font-size:11px;color:var(--muted);text-align:center;
+    margin-bottom:14px;font-variant-numeric:tabular-nums;
+  }
+  .total-note strong{color:var(--cyan)}
+
+  .drop-btn{
+    width:100%;padding:16px;font-size:16px;border-radius:12px;
+    background:linear-gradient(135deg, var(--purple), var(--pink));
+    color:#fff;border:none;font-weight:800;cursor:pointer;
+    font-family:'Orbitron',sans-serif;letter-spacing:1px;
+    transition:.15s;
+    box-shadow:0 0 20px rgba(180, 41, 255, 0.4);
+  }
+  .drop-btn:hover{filter:brightness(1.1);box-shadow:0 0 35px rgba(180, 41, 255, 0.7)}
+  .drop-btn:active{transform:scale(.98)}
+  .drop-btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;transform:none}
+
+  .history{display:flex;flex-wrap:wrap;gap:5px}
+  .history-pill{
+    font-size:11px;font-weight:800;padding:5px 9px;border-radius:7px;
+    font-variant-numeric:tabular-nums;
+  }
+  .history-pill.low{background:rgba(0, 245, 212, 0.1);color:var(--cyan);border:1px solid rgba(0, 245, 212, 0.2)}
+  .history-pill.medium{background:rgba(255, 170, 0, 0.1);color:var(--orange);border:1px solid rgba(255, 170, 0, 0.2)}
+  .history-pill.high{background:rgba(247, 37, 133, 0.1);color:var(--pink);border:1px solid rgba(247, 37, 133, 0.2)}
+
+  /* Board Wrap - Glassmorphism allows background to show through beautifully */
+  .board-wrap{
+    background:var(--panel);border:1px solid var(--border);
+    border-radius:var(--radius);padding:12px;
+    display:flex;justify-content:center;overflow:hidden;
+    position:relative;
+    backdrop-filter: blur(12px);
+    box-shadow:0 0 30px rgba(0, 0, 0, 0.5), inset 0 0 50px rgba(100, 100, 255, 0.05);
+  }
+  /* Plinko canvas is now completely transparent */
+  canvas#board{display:block;width:100%;max-width:620px;height:auto;border-radius:10px; position:relative; z-index:2;}
+
+  .deposit-field{margin-bottom:14px;text-align:left}
+  .deposit-field label{display:block;font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+  .deposit-field .input-wrap{
+    display:flex;align-items:center;background:var(--panel2);
+    border:1px solid var(--border);border-radius:10px;padding:4px 12px;
+  }
+  .deposit-field .input-wrap:focus-within{border-color:var(--purple)}
+  .deposit-field input{
+    flex:1;background:transparent;border:none;outline:none;
+    color:var(--text);font-size:14px;font-weight:600;
+    padding:12px 0;font-family:ui-monospace,monospace;width:100%;
+    letter-spacing:.2px;
+  }
+  .deposit-field input::placeholder{color:#4a5268;font-weight:500}
+  .btc-addr{
+    background:var(--panel2);border:1px dashed var(--border);
+    border-radius:10px;padding:10px 12px;
+    font-size:11px;color:var(--muted);word-break:break-all;
+    display:flex;align-items:center;gap:8px;
+  }
+  .btc-addr code{flex:1;font-family:ui-monospace,monospace;color:var(--cyan);font-size:11px;text-align:left;line-height:1.4}
+  .btc-addr button{
+    background:var(--panel);border:1px solid var(--border);
+    color:var(--text);border-radius:6px;padding:5px 8px;
+    font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;
+  }
+  .btc-addr button:hover{background:rgba(100, 100, 255, 0.2)}
+  .deposit-note{font-size:10px;color:var(--muted);margin-top:14px;line-height:1.5}
+  .deposit-checks{
+    background:var(--panel2);border:1px solid var(--border);
+    border-radius:10px;padding:10px 12px;margin-bottom:14px;
+    font-size:10px;color:var(--muted);line-height:1.6;text-align:left;
+  }
+  .deposit-checks strong{color:var(--cyan)}
+
+  #toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:rgba(15, 15, 35, 0.9);border:1px solid var(--purple);
+    color:var(--text);padding:12px 22px;border-radius:12px;
+    font-size:13px;font-weight:600;z-index:2000;
+    opacity:0;pointer-events:none;transition:.25s;
+    box-shadow:0 0 20px rgba(180, 41, 255, 0.3);
+    backdrop-filter: blur(8px);
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  .float-result{
+    position:absolute;pointer-events:none;
+    font-size:18px;font-weight:900;
+    text-shadow:0 0 15px rgba(0,0,0,.8);
+    animation:floatUp 1.2s ease-out forwards;
+    z-index:50;
+    font-variant-numeric:tabular-nums;
+    white-space:nowrap;
+    font-family:'Orbitron',sans-serif;
+  }
+  @keyframes floatUp{
+    0%{opacity:1;transform:translateY(0) scale(1)}
+    100%{opacity:0;transform:translateY(-60px) scale(1.15)}
+  }
+</style>
+</head>
+<body>
+
+<!-- Full Screen Background Canvas -->
+<canvas id="bgCanvas"></canvas>
+
+<div id="ageGate" class="modal-overlay">
+  <div class="modal">
+    <div style="font-size:40px;margin-bottom:10px">🔞</div>
+    <h1>Age Verification</h1>
+    <p>
+      You must be <strong>18 years or older</strong> to enter this site.<br>
+      If you are not 18 or older, <strong>you must leave immediately</strong>.
+    </p>
+    <button class="btn btn-primary" id="ageYes">I am 18 or older</button>
+    <button class="btn btn-danger" id="ageNo">I am under 18</button>
+    <p id="ageMsg" style="margin-top:16px;font-size:12px;min-height:18px"></p>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <!-- Logo -->
+    <div class="logo">
+      <img src="https://i.ibb.co/KR2C7nW/Galaxy-Plinko-Neon-Emblem.png" alt="Galaxy Plinko" class="logo-img" onerror="this.style.display='none'; document.getElementById('textLogoFallback').style.display='block';">
+      <div id="textLogoFallback" class="text-logo" style="display:none;">
+        GALAXY <span style="color:var(--purple);">PLINKO</span>
+      </div>
+    </div>
+    
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="balance-box">
+        <div>
+          <div class="label">Balance</div>
+          <div class="usd" id="balanceUsd">$0.00</div>
+          <div class="btc" id="balanceBtc">0.00000000 BTC</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-ghost" id="headerPnl" style="padding:11px 18px">P/L</button>
+        <button class="btn btn-ghost" id="headerWithdraw" style="padding:11px 18px">Withdraw</button>
+        <button class="btn btn-primary" id="headerDeposit" style="padding:11px 18px">₿ Deposit</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div>
+      <div class="panel">
+        <div class="panel-title">Bet per Ball</div>
+        <div class="bet-input-wrap">
+          <span class="dollar">$</span>
+          <input type="number" id="betInput" value="10" min="1" step="1">
+        </div>
+        <div class="quick-bets">
+          <button data-bet="1">$1</button>
+          <button data-bet="5">$5</button>
+          <button data-bet="10">$10</button>
+          <button data-bet="25">$25</button>
+          <button id="halfBet">½</button>
+          <button id="doubleBet">2×</button>
+          <button id="maxBet">Max</button>
+          <button data-bet="100">$100</button>
+        </div>
+
+        <div class="panel-title">Balls per Drop</div>
+        <div class="bet-input-wrap plain" style="margin-bottom:6px">
+          <input type="number" id="ballCountInput" value="1" min="1" max="100" step="1">
+        </div>
+        <div class="quick-bets" style="grid-template-columns:repeat(5,1fr);margin-bottom:10px">
+          <button data-balls="1">1</button>
+          <button data-balls="5">5</button>
+          <button data-balls="10">10</button>
+          <button data-balls="25">25</button>
+          <button data-balls="50">50</button>
+        </div>
+
+        <div class="panel-title">Risk Level</div>
+        <div class="risk-group">
+          <button class="risk-btn active" data-risk="low">Low</button>
+          <button class="risk-btn" data-risk="medium">Medium</button>
+          <button class="risk-btn" data-risk="high">High</button>
+        </div>
+        <div class="risk-note" id="riskNote">Low · 16× edge · 0.2× center</div>
+
+        <div class="total-note" id="totalNote">Total cost: <strong>$10.00</strong> (1 × $10)</div>
+
+        <button class="drop-btn" id="dropBtn">Drop Ball</button>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Recent Drops</div>
+        <div class="history" id="history">
+          <span style="font-size:12px;color:var(--muted)">No drops yet</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="board-wrap" id="boardWrap">
+      <canvas id="board" width="1240" height="1440"></canvas>
+    </div>
+  </main>
+</div>
+
+<!-- P/L Modal -->
+<div id="pnlModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:400px">
+    <h1>Profit / Loss</h1>
+    <div style="background:var(--panel2); border-radius:12px; padding:20px; margin-bottom:20px; border:1px solid var(--border);">
+      <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-size:14px;">
+        <span style="color:var(--muted);">Total Wagered</span>
+        <span id="statWagered" style="font-weight:700;">$0.00</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:16px; font-size:14px;">
+        <span style="color:var(--muted);">Total Won</span>
+        <span id="statWon" style="font-weight:700;">$0.00</span>
+      </div>
+      <div style="height:1px; background:var(--border); margin:16px 0;"></div>
+      <div style="display:flex; justify-content:space-between; font-size:22px; font-weight:800;">
+        <span>Net P/L</span>
+        <span id="statNet" style="color:var(--cyan); text-shadow:0 0 10px rgba(0,245,212,0.4);">$0.00</span>
+      </div>
+    </div>
+    <button class="btn btn-ghost" id="closePnl" style="width:100%">Close</button>
+  </div>
+</div>
+
+<!-- Deposit Modal -->
+<div id="depositModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:480px">
+    <h1 style="margin-bottom:4px">Deposit Bitcoin</h1>
+    <p style="margin-bottom:18px;font-size:13px">
+      Send BTC to the address below, then paste the transaction hash to credit your balance.
+    </p>
+
+    <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:18px;text-align:left">
+      <img id="qrImg" alt="BTC QR" style="width:104px;height:104px;border-radius:10px;background:#fff;padding:4px;flex-shrink:0" />
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Send BTC to</div>
+        <div class="btc-addr" style="margin-bottom:8px">
+          <code id="btcAddress">bc1q7ft9p897rucyemuea579wqnvcf8s3r6jzq3caf</code>
+          <button id="copyAddr">Copy</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted)">Bitcoin (BTC) on the BTC network only.</div>
+      </div>
+    </div>
+
+    <div class="deposit-field">
+      <label>Transaction Hash (TXID)</label>
+      <div class="input-wrap">
+        <input type="text" id="txidInput" placeholder="paste the 64-character tx hash" spellcheck="false" autocomplete="off" autocapitalize="off">
+      </div>
+    </div>
+
+    <div class="deposit-checks">
+      <strong>Anti-reuse checks:</strong><br>
+      • The tx must appear in this address's recent transaction list<br>
+      • Confirmed txs older than 2 hours are rejected<br>
+      • Each tx hash can only be credited once per browser<br>
+      • Total credits are capped at the address's on-chain total received
+    </div>
+
+    <div id="depositStatus" style="font-size:12px;min-height:18px;margin-bottom:14px;text-align:left;line-height:1.5"></div>
+
+    <button class="btn btn-primary" id="verifyDeposit" style="width:100%;margin-bottom:8px">Verify &amp; Credit</button>
+    <button class="btn btn-ghost" id="closeDeposit" style="width:100%">Cancel</button>
+    <div class="deposit-note">
+      Verification uses the public mempool.space API. Client-side checks are not tamper-proof — for real money you need a backend with server-side verification.
+    </div>
+  </div>
+</div>
+
+<!-- Withdraw Modal -->
+<div id="withdrawModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div style="font-size:40px;margin-bottom:10px">💸</div>
+    <h1>Apply for Withdrawal</h1>
+    <p>
+      To process your withdrawal, you need to request it manually through our Discord server.
+    </p>
+    <a href="https://discord.gg/hjWGJKfZr" target="_blank" rel="noopener noreferrer" class="btn btn-discord" style="width:100%;margin-bottom:10px;">
+      Join Discord Server
+    </a>
+    <button class="btn btn-ghost" id="closeWithdraw" style="width:100%">Cancel</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ============================================================
+   CONFIG
+============================================================ */
+const BTC_PRICE = 76100;
+const DEPOSIT_ADDRESS = 'bc1q7ft9p897rucyemuea579wqnvcf8s3r6jzq3caf';
+const API_BASE = 'https://mempool.space/api';
+
+const RECENT_WINDOW_SECONDS = 2 * 60 * 60;
+const USED_TXIDS_KEY = 'plinko_used_txids_' + DEPOSIT_ADDRESS;
+const CLAIMED_TOTAL_KEY = 'plinko_claimed_sats_' + DEPOSIT_ADDRESS;
+
+const GRAVITY = 0.18;
+const MAX_FALL_SPEED = 7;
+const MAX_BALLS = 100;
+
+const MULTIPLIERS = {
+  low: [
+    16, 9, 2, 1.4, 1.1, 1, 0.5, 0.3, 0.2,
+    0.3, 0.5, 1, 1.1, 1.4, 2, 9, 16
+  ],
+  medium: [
+    110, 41, 10, 5, 3, 1.5, 1, 0.5, 0.3,
+    0.5, 1, 1.5, 3, 5, 10, 41, 110
+  ],
+  high: [
+    169, 66.2, 26, 10.2, 3.99, 1.57, 0.61, 0.24, 0.09,
+    0.24, 0.61, 1.57, 3.99, 10.2, 26, 66.2, 169
+  ]
+};
+
+const RISK_LABELS = {
+  low:    'Low · 16× edge · 0.2× center',
+  medium: 'Medium · 110× edge · 0.3× center',
+  high:   'High · 169× edge · 0.09× center'
+};
+
+const state = {
+  balance: 0,
+  bet: 10,
+  ballCount: 1,
+  risk: 'low',
+  dropping: false,
+  history: [],
+  flashBins: new Set(),
+  btcPrice: BTC_PRICE,
+  totalWagered: 0,
+  totalWon: 0
+};
+
+/* ============================================================
+   DOM
+============================================================ */
+const $ = id => document.getElementById(id);
+const ageGate = $('ageGate');
+const app = $('app');
+const canvas = $('board');
+const ctx = canvas.getContext('2d');
+const betInput = $('betInput');
+const ballCountInput = $('ballCountInput');
+const totalNote = $('totalNote');
+const dropBtn = $('dropBtn');
+const historyEl = $('history');
+const balanceUsdEl = $('balanceUsd');
+const balanceBtcEl = $('balanceBtc');
+const riskNote = $('riskNote');
+
+/* ============================================================
+   BACKGROUND CANVAS SETUP
+============================================================ */
+const bgCanvas = $('bgCanvas');
+const bgCtx = bgCanvas.getContext('2d');
+let bgW, bgH;
+
+function resizeBg() {
+  bgW = window.innerWidth;
+  bgH = window.innerHeight;
+  bgCanvas.width = bgW;
+  bgCanvas.height = bgH;
+}
+window.addEventListener('resize', resizeBg);
+resizeBg();
+
+let asteroids = [];
+let rockets = [];
+
+function initAsteroids() {
+  asteroids = [];
+  for (let i = 0; i < 15; i++) {
+    const points = [];
+    const size = 15 + Math.random() * 40;
+    for (let j = 0; j < 8; j++) {
+      const angle = (j / 8) * Math.PI * 2;
+      const r = size * (0.7 + Math.random() * 0.4);
+      points.push({ x: Math.cos(angle) * r, y: Math.sin(angle) * r });
+    }
+    
+    asteroids.push({
+      x: Math.random() * bgW,
+      y: Math.random() * bgH,
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: (Math.random() - 0.5) * 0.5,
+      rot: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.01,
+      points: points
+    });
+  }
+}
+
+function spawnRocket() {
+  const fromLeft = Math.random() > 0.5;
+  rockets.push({
+    x: fromLeft ? -100 : bgW + 100,
+    y: Math.random() * bgH,
+    vx: fromLeft ? 3 + Math.random() * 3 : -(3 + Math.random() * 3),
+    vy: (Math.random() - 0.5) * 0.5,
+    angle: fromLeft ? 0 : Math.PI
+  });
+}
+
+function renderBgLoop() {
+  bgCtx.clearRect(0, 0, bgW, bgH);
+
+  // Update & Draw Asteroids
+  asteroids.forEach(a => {
+    a.x += a.vx;
+    a.y += a.vy;
+    a.rot += a.rotSpeed;
+
+    if (a.x < -100) a.x = bgW + 100;
+    if (a.x > bgW + 100) a.x = -100;
+    if (a.y < -100) a.y = bgH + 100;
+    if (a.y > bgH + 100) a.y = -100;
+
+    bgCtx.save();
+    bgCtx.translate(a.x, a.y);
+    bgCtx.rotate(a.rot);
+
+    bgCtx.beginPath();
+    bgCtx.moveTo(a.points[0].x, a.points[0].y);
+    for (let i = 1; i < a.points.length; i++) {
+      bgCtx.lineTo(a.points[i].x, a.points[i].y);
+    }
+    bgCtx.closePath();
+    
+    // Very faint asteroids so they don't distract from the game
+    bgCtx.fillStyle = 'rgba(30, 30, 60, 0.4)';
+    bgCtx.fill();
+    bgCtx.strokeStyle = 'rgba(100, 100, 150, 0.2)';
+    bgCtx.lineWidth = 1.5;
+    bgCtx.stroke();
+
+    bgCtx.restore();
+  });
+
+  // Update & Draw Rockets
+  if (Math.random() < 0.005 && rockets.length < 2) {
+    spawnRocket();
+  }
+
+  for (let i = rockets.length - 1; i >= 0; i--) {
+    const r = rockets[i];
+    r.x += r.vx;
+    r.y += r.vy;
+
+    if (r.x < -200 || r.x > bgW + 200) {
+      rockets.splice(i, 1);
+      continue;
+    }
+
+    bgCtx.save();
+    bgCtx.translate(r.x, r.y);
+    bgCtx.rotate(r.angle);
+
+    // Flame
+    const flameLen = 20 + Math.random() * 15;
+    bgCtx.beginPath();
+    bgCtx.moveTo(-15, -5);
+    bgCtx.lineTo(-15 - flameLen, 0);
+    bgCtx.lineTo(-15, 5);
+    bgCtx.closePath();
+    bgCtx.fillStyle = 'rgba(247, 37, 133, 0.6)';
+    bgCtx.shadowColor = '#f72585';
+    bgCtx.shadowBlur = 20;
+    bgCtx.fill();
+
+    bgCtx.beginPath();
+    bgCtx.moveTo(-15, -3);
+    bgCtx.lineTo(-15 - flameLen * 0.6, 0);
+    bgCtx.lineTo(-15, 3);
+    bgCtx.closePath();
+    bgCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    bgCtx.fill();
+
+    // Body
+    bgCtx.shadowBlur = 0;
+    bgCtx.fillStyle = 'rgba(226, 232, 240, 0.7)';
+    bgCtx.beginPath();
+    bgCtx.moveTo(20, 0);
+    bgCtx.lineTo(-15, -10);
+    bgCtx.lineTo(-5, 0);
+    bgCtx.lineTo(-15, 10);
+    bgCtx.closePath();
+    bgCtx.fill();
+    
+    // Window
+    bgCtx.fillStyle = 'rgba(0, 245, 212, 0.8)';
+    bgCtx.beginPath();
+    bgCtx.arc(5, 0, 4, 0, Math.PI * 2);
+    bgCtx.fill();
+
+    bgCtx.restore();
+  }
+
+  requestAnimationFrame(renderBgLoop);
+}
+
+/* ============================================================
+   PLINKO CANVAS SETUP
+============================================================ */
+const W = 620, H = 720;
+const DPR = 2;
+canvas.width = W * DPR;
+canvas.height = H * DPR;
+canvas.style.width = W + 'px';
+canvas.style.height = H + 'px';
+ctx.scale(DPR, DPR);
+
+const ROWS = 16;
+const SPACING = 34;
+const ROW_H = 36;
+const TOP_Y = 60;
+const BALL_R = 7;
+const PEG_R = 4.5;
+const CENTER_X = W / 2;
+const BIN_Y = TOP_Y + ROWS * ROW_H + 8;
+const BIN_H = 38;
+const BIN_W = SPACING - 2;
+
+let balls = [];
+let particles = [];
+
+/* ============================================================
+   HELPERS
+============================================================ */
+function formatMult(m) {
+  if (Number.isInteger(m)) return m + '×';
+  return m.toFixed(2).replace(/\.?0+$/, '') + '×';
+}
+
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.lineTo(x + w - r, y);
+  c.quadraticCurveTo(x + w, y, x + w, y + r);
+  c.lineTo(x + w, y + h - r);
+  c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  c.lineTo(x + r, y + h);
+  c.quadraticCurveTo(x, y + h, x, y + h - r);
+  c.lineTo(x, y + r);
+  c.quadraticCurveTo(x, y, x + r, y);
+  c.closePath();
+}
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+function updateBalance() {
+  balanceUsdEl.textContent = '$' + state.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const btc = state.balance / state.btcPrice;
+  balanceBtcEl.textContent = btc.toFixed(8) + ' BTC';
+}
+
+function updateTotalNote() {
+  const total = Math.floor(state.bet) * state.ballCount;
+  totalNote.innerHTML = `Total cost: <strong>$${total.toFixed(2)}</strong> (${state.ballCount} × $${Math.floor(state.bet)})`;
+}
+
+/* ============================================================
+   VISUAL EFFECTS (Particles & Glow)
+============================================================ */
+function spawnParticles(x, y, color, count = 8, speed = 3) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x, y,
+      vx: (Math.random() - 0.5) * speed * 2,
+      vy: (Math.random() - 0.5) * speed * 2 - 1,
+      life: 1,
+      decay: 0.02 + Math.random() * 0.03,
+      color: color,
+      size: 1 + Math.random() * 3
+    });
+  }
+}
+
+function updateAndDrawParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.05;
+    p.life -= p.decay;
+
+    if (p.life <= 0) {
+      particles.splice(i, 1);
+      continue;
+    }
+
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 10;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  }
+}
+
+/* ============================================================
+   DRAWING (Plinko Elements)
+============================================================ */
+function drawConstellationLines() {
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(0, 245, 212, 0.04)';
+  ctx.lineWidth = 1;
+  
+  for (let row = 0; row < ROWS - 1; row++) {
+    for (let j = 0; j <= row; j++) {
+      const x1 = CENTER_X - (row * SPACING) / 2 + j * SPACING;
+      const y1 = TOP_Y + row * ROW_H;
+      
+      const x2 = CENTER_X - ((row+1) * SPACING) / 2 + j * SPACING;
+      const y2 = TOP_Y + (row+1) * ROW_H;
+      ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+      
+      const x3 = x2 + SPACING;
+      ctx.moveTo(x1, y1); ctx.lineTo(x3, y2);
+    }
+  }
+  ctx.stroke();
+}
+
+function drawPegs() {
+  const time = Date.now() * 0.003;
+  for (let row = 0; row < ROWS; row++) {
+    for (let j = 0; j <= row; j++) {
+      const x = CENTER_X - (row * SPACING) / 2 + j * SPACING;
+      const y = TOP_Y + row * ROW_H;
+
+      const pulse = Math.sin(time + row * 0.5 + j * 0.5) * 2;
+      
+      ctx.beginPath();
+      ctx.arc(x, y, PEG_R + 5 + pulse, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0, 245, 212, 0.08)';
+      ctx.fill();
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(Math.PI / 4);
+      ctx.beginPath();
+      const starSize = 4 + pulse * 0.3;
+      for (let k = 0; k < 4; k++) {
+        ctx.rotate(Math.PI / 2);
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, starSize * 2);
+        ctx.lineTo(starSize * 0.5, 0);
+      }
+      ctx.fillStyle = '#00f5d4';
+      ctx.shadowColor = '#00f5d4';
+      ctx.shadowBlur = 10 + pulse * 2;
+      ctx.fill();
+      ctx.restore();
+      
+      ctx.beginPath();
+      ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
+}
+
+function drawBins() {
+  const mults = MULTIPLIERS[state.risk];
+  const time = Date.now() * 0.002;
+  
+  for (let i = 0; i <= ROWS; i++) {
+    const cx = CENTER_X + (i - ROWS / 2) * SPACING;
+    const x = cx - BIN_W / 2;
+
+    const dist = Math.abs(i - ROWS / 2) / (ROWS / 2);
+    let hue, sat, light;
+    
+    if (state.risk === 'low') {
+      hue = 175; sat = 80; light = 15 + dist * 30;
+    } else if (state.risk === 'medium') {
+      hue = 280; sat = 80; light = 15 + dist * 35;
+    } else {
+      hue = 330; sat = 85; light = 15 + dist * 40;
+    }
+
+    const isFlash = state.flashBins.has(i);
+    let finalLight = isFlash ? Math.min(75, light + 30) : light;
+    
+    if (!isFlash) {
+      finalLight += Math.sin(time + i) * 3;
+    }
+
+    const grad = ctx.createLinearGradient(x, BIN_Y, x, BIN_Y + BIN_H);
+    grad.addColorStop(0, `hsl(${hue}, ${sat}%, ${finalLight + 15}%)`);
+    grad.addColorStop(1, `hsl(${hue}, ${sat}%, ${finalLight - 5}%)`);
+
+    if (isFlash) {
+      ctx.shadowColor = `hsl(${hue}, 100%, 65%)`;
+      ctx.shadowBlur = 30;
+    }
+
+    roundRect(ctx, x, BIN_Y, BIN_W, BIN_H, 8);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.strokeStyle = isFlash ? '#fff' : `hsl(${hue}, 100%, 75%)`;
+    ctx.lineWidth = isFlash ? 2.5 : 1;
+    ctx.stroke();
+
+    roundRect(ctx, x + 2, BIN_Y + 2, BIN_W - 4, BIN_H / 2, 4);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.fill();
+
+    ctx.fillStyle = isFlash ? '#fff' : 'rgba(255,255,255,0.95)';
+    ctx.font = 'bold 9px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(formatMult(mults[i]), cx, BIN_Y + BIN_H / 2 + .5);
+    ctx.shadowBlur = 0;
+  }
+}
+
+function drawBallTrail(b) {
+  if (!b.trail) return;
+  for (let i = 0; i < b.trail.length; i++) {
+    const t = b.trail[i];
+    const alpha = (i / b.trail.length) * 0.5;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, BALL_R * (i / b.trail.length), 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(247, 37, 133, ${alpha})`;
+    ctx.fill();
+  }
+}
+
+function drawBall(x, y) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, BALL_R + 15);
+  g.addColorStop(0, 'rgba(247, 37, 133, 0.8)');
+  g.addColorStop(0.5, 'rgba(180, 41, 255, 0.4)');
+  g.addColorStop(1, 'rgba(247, 37, 133, 0)');
+  ctx.beginPath();
+  ctx.arc(x, y, BALL_R + 15, 0, Math.PI * 2);
+  ctx.fillStyle = g;
+  ctx.fill();
+
+  const bg = ctx.createRadialGradient(x - 2, y - 2, 0, x, y, BALL_R);
+  bg.addColorStop(0, '#ffffff');
+  bg.addColorStop(0.4, '#f72585');
+  bg.addColorStop(1, '#7209b7');
+  
+  ctx.beginPath();
+  ctx.arc(x, y, BALL_R, 0, Math.PI * 2);
+  ctx.fillStyle = bg;
+  ctx.shadowColor = '#f72585';
+  ctx.shadowBlur = 15;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  ctx.beginPath();
+  ctx.arc(x - 2, y - 2, 1.5, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+}
+
+/* ============================================================
+   PLINKO ANIMATION LOOP
+============================================================ */
+function renderLoop() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Draw Plinko Game (Canvas is transparent)
+  drawConstellationLines();
+  drawPegs();
+  drawBins();
+  
+  for (const b of balls) {
+    drawBallTrail(b);
+    drawBall(b.x, b.y);
+  }
+
+  updateAndDrawParticles();
+
+  if (state.dropping) {
+    updateBalls();
+  }
+
+  requestAnimationFrame(renderLoop);
+}
+
+/* ============================================================
+   MULTI-BALL DROP & PHYSICS
+============================================================ */
+function createBall() {
+  const dirs = [];
+  let rightMoves = 0;
+  for (let i = 0; i < ROWS; i++) {
+    const d = Math.random() < 0.5 ? -1 : 1;
+    dirs.push(d);
+    if (d === 1) rightMoves++;
+  }
+
+  const waypoints = [];
+  let x = CENTER_X;
+  for (let i = 0; i < ROWS; i++) {
+    x += dirs[i] * (SPACING / 2);
+    waypoints.push({
+      x,
+      y: TOP_Y + i * ROW_H + ROW_H * 0.55
+    });
+  }
+  const finalX = CENTER_X + (rightMoves - ROWS / 2) * SPACING;
+  waypoints.push({ x: finalX, y: BIN_Y + 12 });
+
+  return {
+    x: CENTER_X,
+    y: TOP_Y - 40,
+    startY: TOP_Y - 40,
+    vy: 0,
+    waypointIndex: 0,
+    waypoints,
+    finalBin: rightMoves,
+    landed: false,
+    landedBin: -1,
+    startTime: performance.now(),
+    startDelay: Math.random() * 450,
+    trail: []
+  };
+}
+
+function dropBalls() {
+  if (state.dropping) return;
+
+  const bet = Math.floor(state.bet);
+  const count = state.ballCount;
+  const totalCost = bet * count;
+
+  if (bet < 1) { toast('Minimum bet is $1'); return; }
+  if (count < 1) { toast('Need at least 1 ball'); return; }
+  if (totalCost > state.balance) {
+    toast(`Insufficient balance — need $${totalCost.toFixed(2)}`);
+    return;
+  }
+
+  state.balance -= totalCost;
+  state.totalWagered += totalCost;
+  updateBalance();
+  
+  state.dropping = true;
+  dropBtn.disabled = true;
+  dropBtn.textContent = count === 1 ? 'Dropping…' : `Dropping ${count}…`;
+
+  balls = [];
+  particles = [];
+  
+  for (let i = 0; i < count; i++) {
+    balls.push(createBall());
+  }
+}
+
+function updateBalls() {
+  const now = performance.now();
+  let anyActive = false;
+
+  for (const b of balls) {
+    if (b.landed) continue;
+    anyActive = true;
+
+    if (now - b.startTime < b.startDelay) continue;
+
+    b.vy += GRAVITY;
+    if (b.vy > MAX_FALL_SPEED) b.vy = MAX_FALL_SPEED;
+    b.y += b.vy;
+
+    while (b.waypointIndex < b.waypoints.length - 1 &&
+           b.y > b.waypoints[b.waypointIndex].y) {
+      b.waypointIndex++;
+      
+      if (Math.random() < 0.6) {
+        spawnParticles(b.x, b.y, '#00f5d4', 4, 2);
+      }
+    }
+
+    const prev = b.waypointIndex === 0
+      ? { x: CENTER_X, y: b.startY }
+      : b.waypoints[b.waypointIndex - 1];
+    const next = b.waypoints[b.waypointIndex] || b.waypoints[b.waypoints.length - 1];
+
+    const t = Math.min(1, (b.y - prev.y) / (next.y - prev.y || 1));
+    b.x = prev.x + (next.x - prev.x) * t;
+
+    b.trail.push({ x: b.x, y: b.y });
+    if (b.trail.length > 12) b.trail.shift();
+
+    if (b.y >= BIN_Y - BALL_R) {
+      b.landed = true;
+      b.landedBin = b.finalBin;
+      b.x = CENTER_X + (b.landedBin - ROWS / 2) * SPACING;
+      b.y = BIN_Y + BIN_H / 2;
+      
+      const hue = state.risk === 'low' ? 175 : state.risk === 'medium' ? 280 : 330;
+      spawnParticles(b.x, BIN_Y, `hsl(${hue}, 100%, 65%)`, 25, 6);
+    }
+  }
+
+  if (!anyActive && state.dropping) {
+    state.dropping = false;
+    setTimeout(finishDrop, 320);
+  }
+}
+
+function finishDrop() {
+  const mults = MULTIPLIERS[state.risk];
+  const bet = Math.floor(state.bet);
+
+  let totalPayout = 0;
+  const landedBins = [];
+
+  for (const b of balls) {
+    const mult = mults[b.landedBin];
+    totalPayout += bet * mult;
+    landedBins.push({ bin: b.landedBin, mult });
+  }
+
+  const totalBet = bet * landedBins.length;
+  const profit = totalPayout - totalBet;
+
+  state.balance += totalPayout;
+  state.totalWon += totalPayout;
+  updateBalance();
+
+  for (const { mult } of landedBins) {
+    state.history.unshift({ risk: state.risk, mult });
+  }
+  if (state.history.length > 30) state.history.length = 30;
+  renderHistory();
+
+  state.flashBins = new Set(landedBins.map(b => b.bin));
+  showSummaryResult(landedBins, profit, totalBet, totalPayout);
+
+  dropBtn.disabled = false;
+  dropBtn.textContent = 'Drop Ball';
+
+  setTimeout(() => {
+    state.flashBins.clear();
+  }, 750);
+
+  balls = [];
+}
+
+function showSummaryResult(landedBins, profit, totalBet, totalPayout) {
+  const wrap = $('boardWrap');
+  const canvasRect = canvas.getBoundingClientRect();
+  const wrapRect = wrap.getBoundingClientRect();
+
+  const scaleX = canvasRect.width / W;
+  const scaleY = canvasRect.height / H;
+
+  const cx = CENTER_X;
+  const cy = BIN_Y - 40;
+
+  const px = canvasRect.left - wrapRect.left + cx * scaleX;
+  const py = canvasRect.top - wrapRect.top + cy * scaleY;
+
+  const el = document.createElement('div');
+  el.className = 'float-result';
+  el.style.left = (px) + 'px';
+  el.style.top = py + 'px';
+  el.style.transform = 'translateX(-50%)';
+  el.style.color = profit >= 0 ? '#00f5d4' : '#f72585';
+  el.style.textShadow = profit >= 0 ? '0 0 15px rgba(0,245,212,0.6)' : '0 0 15px rgba(247,37,133,0.6)';
+  el.style.fontSize = landedBins.length > 1 ? '20px' : '18px';
+
+  if (landedBins.length === 1) {
+    el.textContent = profit >= 0
+      ? `+$${profit.toFixed(2)} (${formatMult(landedBins[0].mult)})`
+      : `−$${Math.abs(profit).toFixed(2)}`;
+  } else {
+    const sign = profit >= 0 ? '+' : '−';
+    el.textContent = `${sign}$${Math.abs(profit).toFixed(2)} · ${landedBins.length} balls`;
+  }
+
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 1600);
+}
+
+/* ============================================================
+   HISTORY
+============================================================ */
+function renderHistory() {
+  if (state.history.length === 0) {
+    historyEl.innerHTML = '<span style="font-size:12px;color:var(--muted)">No drops yet</span>';
+    return;
+  }
+  historyEl.innerHTML = state.history.map(h =>
+    `<span class="history-pill ${h.risk}">${formatMult(h.mult)}</span>`
+  ).join('');
+}
+
+/* ============================================================
+   BET CONTROLS
+============================================================ */
+betInput.addEventListener('input', () => {
+  let v = parseFloat(betInput.value);
+  if (isNaN(v) || v < 1) v = 1;
+  state.bet = Math.floor(v);
+  betInput.value = state.bet;
+  updateTotalNote();
+});
+
+document.querySelectorAll('.quick-bets [data-bet]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const v = parseInt(btn.dataset.bet, 10);
+    state.bet = v;
+    betInput.value = v;
+    updateTotalNote();
+  });
+});
+
+$('halfBet').addEventListener('click', () => {
+  state.bet = Math.max(1, Math.floor(state.bet / 2));
+  betInput.value = state.bet;
+  updateTotalNote();
+});
+
+$('doubleBet').addEventListener('click', () => {
+  state.bet = Math.max(1, state.bet * 2);
+  betInput.value = state.bet;
+  updateTotalNote();
+});
+
+$('maxBet').addEventListener('click', () => {
+  const perBall = Math.max(1, Math.floor(state.balance / state.ballCount));
+  state.bet = perBall;
+  betInput.value = state.bet;
+  updateTotalNote();
+  if (state.balance < 1) toast('Deposit BTC first');
+});
+
+/* ============================================================
+   BALL COUNT CONTROLS
+============================================================ */
+ballCountInput.addEventListener('input', () => {
+  let v = parseInt(ballCountInput.value);
+  if (isNaN(v) || v < 1) v = 1;
+  if (v > MAX_BALLS) v = MAX_BALLS;
+  state.ballCount = v;
+  ballCountInput.value = v;
+  updateTotalNote();
+});
+
+document.querySelectorAll('[data-balls]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const v = parseInt(btn.dataset.balls, 10);
+    state.ballCount = v;
+    ballCountInput.value = v;
+    updateTotalNote();
+  });
+});
+
+/* ============================================================
+   RISK
+============================================================ */
+document.querySelectorAll('.risk-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (state.dropping) return;
+    document.querySelectorAll('.risk-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.risk = btn.dataset.risk;
+    riskNote.textContent = RISK_LABELS[state.risk];
+  });
+});
+
+dropBtn.addEventListener('click', dropBalls);
+
+/* ============================================================
+   MODALS & P/L LOGIC
+============================================================ */
+const pnlModal = $('pnlModal');
+const depositModal = $('depositModal');
+const withdrawModal = $('withdrawModal');
+
+function openPnl() {
+  const net = state.totalWon - state.totalWagered;
+  
+  $('statWagered').textContent = '$' + state.totalWagered.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  $('statWon').textContent = '$' + state.totalWon.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  
+  const statNet = $('statNet');
+  statNet.textContent = (net >= 0 ? '+$' : '-$') + Math.abs(net).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  statNet.style.color = net >= 0 ? 'var(--cyan)' : 'var(--pink)';
+  statNet.style.textShadow = net >= 0 ? '0 0 10px rgba(0,245,212,0.4)' : '0 0 10px rgba(247,37,133,0.4)';
+  
+  pnlModal.classList.remove('hidden');
+}
+
+function openDeposit() {
+  $('txidInput').value = '';
+  setDepositStatus('');
+  $('qrImg').src =
+    'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&data=' +
+    encodeURIComponent(DEPOSIT_ADDRESS);
+  depositModal.classList.remove('hidden');
+  setTimeout(() => $('txidInput').focus(), 100);
+}
+
+function openWithdraw() {
+  withdrawModal.classList.remove('hidden');
+}
+
+$('headerPnl').addEventListener('click', openPnl);
+$('closePnl').addEventListener('click', () => pnlModal.classList.add('hidden'));
+
+$('headerDeposit').addEventListener('click', openDeposit);
+$('closeDeposit').addEventListener('click', () => depositModal.classList.add('hidden'));
+
+$('headerWithdraw').addEventListener('click', openWithdraw);
+$('closeWithdraw').addEventListener('click', () => withdrawModal.classList.add('hidden'));
+
+$('copyAddr').addEventListener('click', () => {
+  navigator.clipboard.writeText(DEPOSIT_ADDRESS)
+    .then(() => toast('Address copied'))
+    .catch(() => toast('Copy failed — select the address manually'));
+});
+
+/* ============================================================
+   DEPOSIT VERIFICATION
+============================================================ */
+function getUsedTxids() {
+  try { return JSON.parse(localStorage.getItem(USED_TXIDS_KEY) || '{}'); }
+  catch { return {}; }
+}
+function markTxidUsed(txid, sats) {
+  const used = getUsedTxids();
+  used[txid] = { sats, ts: Date.now() };
+  try { localStorage.setItem(USED_TXIDS_KEY, JSON.stringify(used)); } catch {}
+}
+function getTotalClaimedSats() {
+  try { return parseInt(localStorage.getItem(CLAIMED_TOTAL_KEY) || '0', 10) || 0; }
+  catch { return 0; }
+}
+function addClaimedSats(sats) {
+  const total = getTotalClaimedSats() + sats;
+  try { localStorage.setItem(CLAIMED_TOTAL_KEY, String(total)); } catch {}
+}
+
+function setDepositStatus(msg, type) {
+  const statusEl = $('depositStatus');
+  statusEl.textContent = msg || '';
+  statusEl.style.color =
+    type === 'error'   ? 'var(--pink)' :
+    type === 'success' ? 'var(--cyan)' :
+                         'var(--muted)';
+}
+
+$('verifyDeposit').addEventListener('click', async () => {
+  const txidInput = $('txidInput');
+  const verifyBtn = $('verifyDeposit');
+  const txid = txidInput.value.trim().toLowerCase();
+
+  if (!/^[0-9a-f]{64}$/.test(txid)) {
+    setDepositStatus('❌ Invalid transaction hash format (must be 64 hex characters).', 'error');
+    return;
+  }
+
+  const used = getUsedTxids();
+  if (used[txid]) {
+    setDepositStatus('❌ This transaction hash has already been credited on this browser.', 'error');
+    return;
+  }
+
+  verifyBtn.disabled = true;
+  verifyBtn.textContent = 'Verifying…';
+  setDepositStatus('Fetching recent transactions to the deposit address…', 'info');
+
+  try {
+    const [addrRes, txListRes] = await Promise.all([
+      fetch(`${API_BASE}/address/${DEPOSIT_ADDRESS}`),
+      fetch(`${API_BASE}/address/${DEPOSIT_ADDRESS}/txs`)
+    ]);
+
+    if (!addrRes.ok || !txListRes.ok) {
+      throw new Error('Blockchain API unreachable. Please try again in a moment.');
+    }
+
+    const addrInfo = await addrRes.json();
+    const txList   = await txListRes.json();
+
+    const tx = txList.find(t => t.txid === txid);
+    if (!tx) {
+      throw new Error(
+        'This transaction is not in the deposit address\'s recent transaction list. ' +
+        'It may not have paid this address, or it may be too old — only the most recent txs are accepted.'
+      );
+    }
+
+    let sats = 0;
+    for (const vout of (tx.vout || [])) {
+      if (vout.scriptpubkey_address === DEPOSIT_ADDRESS) sats += vout.value;
+    }
+    if (sats === 0) {
+      throw new Error('This transaction does not pay the deposit address.');
+    }
+
+    if (tx.status && tx.status.confirmed) {
+      const age = Math.floor(Date.now() / 1000) - tx.status.block_time;
+      if (age > RECENT_WINDOW_SECONDS) {
+        const hours = (age / 3600).toFixed(1);
+        throw new Error(
+          `This transaction is ${hours} hours old. Only deposits from the last ` +
+          `${(RECENT_WINDOW_SECONDS / 3600).toFixed(0)} hours can be credited.`
+        );
+      }
+    }
+
+    const totalReceivedSats =
+      (addrInfo.chain_stats.funded_txo_sum  || 0) +
+      (addrInfo.mempool_stats.funded_txo_sum || 0);
+    const totalClaimedSats = getTotalClaimedSats();
+
+    if (totalClaimedSats + sats > totalReceivedSats) {
+      const remaining = Math.max(0, totalReceivedSats - totalClaimedSats);
+      throw new Error(
+        `Cannot credit ${sats} sats. The address has received ${totalReceivedSats} sats total ` +
+        `and this browser has already claimed ${totalClaimedSats} sats. ` +
+        `Remaining claimable: ${remaining} sats.`
+      );
+    }
+
+    const btc = sats / 1e8;
+    const usd = btc * state.btcPrice;
+
+    state.balance += usd;
+    updateBalance();
+    markTxidUsed(txid, sats);
+    addClaimedSats(sats);
+
+    const confirmed = tx.status && tx.status.confirmed;
+    setDepositStatus(
+      `✅ Credited $${usd.toFixed(2)} (${btc.toFixed(8)} BTC)` +
+      (confirmed ? '' : ' · unconfirmed (0-conf)'),
+      'success'
+    );
+    toast(`+$${usd.toFixed(2)} credited`);
+    txidInput.value = '';
+
+  } catch (err) {
+    setDepositStatus('❌ ' + (err.message || 'Verification failed.'), 'error');
+  } finally {
+    verifyBtn.disabled = false;
+    verifyBtn.textContent = 'Verify & Credit';
+  }
+});
+
+/* ============================================================
+   AGE GATE & INIT
+============================================================ */
+$('ageYes').addEventListener('click', () => {
+  ageGate.classList.add('hidden');
+  app.classList.remove('hidden');
+  
+  initAsteroids();
+  renderBgLoop(); // Start background loop
+  renderLoop();   // Start Plinko loop
+  
+  updateBalance();
+  updateTotalNote();
+  renderHistory();
+});
+
+$('ageNo').addEventListener('click', () => {
+  const modal = ageGate.querySelector('.modal');
+  modal.innerHTML = `
+    <div style="font-size:40px;margin-bottom:10px">🚫</div>
+    <h1>Access Denied</h1>
+    <p>You must be <strong>18 years or older</strong> to use this site.<br>
+    You are being redirected away now.</p>
+    <p style="font-size:12px;color:var(--muted)">If you are not redirected, <a href="https://www.google.com" style="color:var(--cyan)">click here to leave</a>.</p>
+  `;
+  setTimeout(() => { window.location.href = 'https://www.google.com'; }, 2800);
+});
+
+// Initial setup calls
+updateBalance();
+updateTotalNote();
+initAsteroids();
+</script>
+</body>
+</html>
